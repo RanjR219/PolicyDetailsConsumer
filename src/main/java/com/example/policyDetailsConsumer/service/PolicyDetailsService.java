@@ -1,4 +1,6 @@
 package com.example.policyDetailsConsumer.service;
+
+import com.example.policyDetailsConsumer.utility.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jms.core.JmsTemplate;
@@ -6,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -17,16 +20,19 @@ public class PolicyDetailsService {
     @Autowired
     JmsTemplate jmsTemplate;
 
-    @Value("${springjms.anotherQueue}")
+    @Value("${springjms.consumerQueue}")
     private String queue;
 
-    public void sendMessage(String message) throws ParserConfigurationException, IOException, SAXException {
-        String policyNumber = getValueFromXml(message, "policyNumber");
+    public void sendMessage(String policyDetailsXml) throws ParserConfigurationException, IOException, SAXException {
+
+        String policyNumber = getValueFromXml(policyDetailsXml, "policyNumber");
         if (!isPolicyNumberValid(policyNumber)) {
-            message = "Policy number should have at least 8 digits";
+            jmsTemplate.convertAndSend(queue, Constants.INVALID_POLICY_NUMBER_MESSAGE);
+            System.out.println("Message sent-->" + Constants.INVALID_POLICY_NUMBER_MESSAGE);
+        } else {
+            jmsTemplate.convertAndSend(queue, policyDetailsXml);
+            System.out.println("Message sent-->" + policyDetailsXml);
         }
-        jmsTemplate.convertAndSend(queue, message);
-        System.out.println("Message sent-->" + message);
     }
 
     private String getValueFromXml(String message, String tag) throws ParserConfigurationException, IOException, SAXException {
@@ -39,6 +45,6 @@ public class PolicyDetailsService {
     }
 
     private boolean isPolicyNumberValid(String policyNumber) {
-        return policyNumber.length() > 8;
+        return policyNumber.length() >= 8;
     }
 }

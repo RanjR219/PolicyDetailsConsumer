@@ -2,6 +2,8 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.1.0'
 	id 'io.spring.dependency-management' version '1.1.0'
+	id 'groovy'
+	id 'jacoco'
 }
 
 group = 'com.example'
@@ -16,9 +18,55 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-web-services'
 	implementation 'org.springframework.boot:spring-boot-starter-artemis:3.1.0'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.spockframework:spock-core:2.4-M1-groovy-4.0'
+	testImplementation 'org.spockframework:spock-spring:2.4-M1-groovy-4.0'
+	testImplementation 'org.apache.groovy:groovy-all:4.0.12'
+	testImplementation 'org.apache.activemq:activemq-broker:5.16.2'
+
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+test {
+	finalizedBy jacocoTestReport // report is always generated after tests run
+}
+
+jacocoTestReport {
+	dependsOn test // tests are required to run before generating the report
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: ['com/example/policyDetailsConsumer/PolicyDetailsConsumerApplication.class'])
+		}))
+	}
+}
+
+jacocoTestCoverageVerification {
+	violationRules {
+		rule {
+			limit {
+				minimum = 0.9
+			}
+		}
+
+		rule {
+			enabled = false
+			element = 'CLASS'
+			includes = ['org.gradle.*']
+
+			limit {
+				counter = 'LINE'
+				value = 'TOTALCOUNT'
+				maximum = 0.3
+			}
+		}
+	}
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: ['com/example/policyDetailsConsumer/PolicyDetailsConsumerApplication.class', 'com/example/policyDetailsConsumer/utility/Constants.class'])
+		}))
+	}
 }
